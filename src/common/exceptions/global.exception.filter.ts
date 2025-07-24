@@ -35,15 +35,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // HTTP 예외 처리
       statusCode = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      
+
       if (typeof exceptionResponse === 'object' && 'message' in exceptionResponse) {
         errorResponse = {
           success: false,
           error: {
             code: ErrorCode.INVALID_PARAMETER,
-            message: Array.isArray(exceptionResponse.message) 
+            message: Array.isArray(exceptionResponse.message)
               ? exceptionResponse.message.join(', ')
-              : exceptionResponse.message,
+              : String(exceptionResponse.message),
             details: exceptionResponse,
           },
           timestamp: Date.now(),
