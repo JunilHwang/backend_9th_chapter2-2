@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String?
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  balances   Balance?
+  transactions BalanceTransaction[]
+  orders     Order[]
+  coupons    Coupon[]
+}
+
+model Balance {
+  id                BigInt   @id @default(autoincrement())
+  userId            BigInt   @unique
+  currentBalance    Int
+  dailyChargeAmount Int
+  lastUpdatedAt     DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id])
+}
+
+model BalanceTransaction {
+  id             BigInt           @id @default(autoincrement())
+  userId         BigInt
+  transactionType TransactionType
+  amount         Int
+  balanceBefore  Int
+  balanceAfter   Int
+  description    String?
+  createdAt      DateTime @default(now())
+
+  user           User @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id            BigInt        @id @default(autoincrement())
+  name          String
+  price         Int
+  stockQuantity Int
+  status        ProductStatus @default(ACTIVE)
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  version       Int      @default(0)
+
+  orderProducts OrderProduct[]
+  salesStats    SalesStatistics[]
+}
+
+model Order {
+  id            BigInt        @id @default(autoincrement())
+  userId        BigInt
+  couponId      BigInt?
+  status        OrderStatus   @default(PENDING)
+  totalAmount   Int
+  discountAmount Int
+  finalAmount   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  version       Int      @default(0)
+
+  user          User        @relation(fields: [userId], references: [id])
+  coupon        Coupon?     @relation(fields: [couponId], references: [id])
+  orderProducts OrderProduct[]
+  payment       Payment?
+  dataTransfers DataTransfer[]
+}
+
+model OrderProduct {
+  id         BigInt  @id @default(autoincrement())
+  orderId    BigInt
+  productId  BigInt
+  quantity   Int
+  unitPrice  Int
+  totalPrice Int
+  createdAt  DateTime @default(now())
+
+  order      Order   @relation(fields: [orderId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id            BigInt       @id @default(autoincrement())
+  orderId       BigInt       @unique
+  status        PaymentStatus
+  amount        Int
+  balanceBefore Int
+  balanceAfter  Int
+  failureReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order         Order @relation(fields: [orderId], references: [id])
+}
+
+model CouponEvent {
+  id                BigInt        @id @default(autoincrement())
+  name              String
+  discountType      DiscountType
+  discountValue     Int
+  totalQuantity     Int
+  issuedQuantity    Int
+  minimumOrderAmount Int
+  startDate         DateTime
+  endDate           DateTime
+  status            CouponEventStatus @default(ACTIVE)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  version           Int      @default(0)
+
+  coupons           Coupon[]
+}
+
+model Coupon {
+  id            BigInt     @id @default(autoincrement())
+  userId        BigInt
+  couponEventId BigInt
+  couponCode    String     @unique
+  status        CouponStatus @default(AVAILABLE)
+  issuedAt      DateTime   @default(now())
+  usedAt        DateTime?
+  expiredAt     DateTime
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User        @relation(fields: [userId], references: [id])
+  couponEvent   CouponEvent @relation(fields: [couponEventId], references: [id])
+  orders        Order[]
+}
+
+model SalesStatistics {
+  id            BigInt   @id @default(autoincrement())
+  productId     BigInt
+  statisticsDate DateTime
+  salesQuantity Int
+  salesAmount   Int
+  rankPosition  Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product       Product @relation(fields: [productId], references: [id])
+}
+
+model DataTransfer {
+  id            BigInt        @id @default(autoincrement())
+  orderId       BigInt
+  transferType  TransferType
+  status        TransferStatus @default(PENDING)
+  transferData  String
+  retryCount    Int      @default(0)
+  errorMessage  String?
+  firstAttemptAt DateTime @default(now())
+  lastAttemptAt  DateTime @default(now())
+  successAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order         Order @relation(fields: [orderId], references: [id])
+}
+
+//
+// ENUM 정의
+//
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TransactionType {
+  CHARGE
+  USE
+  REFUND
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum CouponEventStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum CouponStatus {
+  AVAILABLE
+  USED
+  EXPIRED
+}
+
+enum TransferType {
+  ORDER_COMPLETE
+  PAYMENT_COMPLETE
+}
+
+enum TransferStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
